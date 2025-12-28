@@ -15,25 +15,38 @@ export function Contact() {
     message: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const encode = (data: Record<string, string>) =>
+    Object.keys(data)
+      .map((key) => encodeURIComponent(key) + "=" + encodeURIComponent(data[key]))
+      .join("&");
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Netlify will handle the form submission automatically
     const form = e.target as HTMLFormElement;
-    const formData = new FormData(form);
+    const formDataObj = new FormData(form);
+    const data: Record<string, string> = {};
     
-    fetch('/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams(formData as any).toString(),
-    })
-      .then(() => {
+    formDataObj.forEach((value, key) => {
+      data[key] = value as string;
+    });
+
+    try {
+      const response = await fetch("/", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: encode({ "form-name": "contact", ...data }),
+      });
+      
+      if (response.ok) {
         alert('Thank you for your inquiry! We will contact you within 24 hours.');
         setFormData({ name: '', email: '', phone: '', projectType: '', message: '' });
-      })
-      .catch((error) => {
-        console.error('Error:', error);
-        alert('There was an error submitting your form. Please try again or contact us directly.');
-      });
+      } else {
+        throw new Error('Form submission failed');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('There was an error submitting your form. Please try again or contact us directly.');
+    }
   };
 
   return (
@@ -136,8 +149,22 @@ export function Contact() {
               <Card>
                 <CardContent className="p-8">
                   <h2 className="text-2xl text-gray-900 mb-6">Request a Free Estimate</h2>
-                  <form onSubmit={handleSubmit} className="space-y-6" data-netlify="true" name="contact">
+                  <form
+                    name="contact"
+                    method="POST"
+                    data-netlify="true"
+                    data-netlify-honeypot="bot-field"
+                    onSubmit={handleSubmit}
+                    className="space-y-6"
+                  >
                     <input type="hidden" name="form-name" value="contact" />
+                    
+                    {/* Honeypot field for spam protection */}
+                    <p className="hidden">
+                      <label>
+                        Don&apos;t fill this out: <input name="bot-field" />
+                      </label>
+                    </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <Label htmlFor="name">Name *</Label>
